@@ -1,0 +1,72 @@
+# ConfigMap for Grafana Loki
+# Berisi loki.yaml — identik dengan Docker Compose config,
+# hanya instance_addr yang disesuaikan ke 0.0.0.0 agar bisa di-resolve di K8s.
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: loki-config
+  namespace: loki
+  labels:
+    app.kubernetes.io/name:      loki
+    app.kubernetes.io/component: config
+data:
+  loki.yaml: |
+    # Grafana Loki 3.1.0 — log aggregation backend
+
+    auth_enabled: false
+
+    server:
+      http_listen_port: 3100
+      grpc_listen_port: 9096
+      log_level: info
+
+    common:
+      instance_addr: 0.0.0.0   # Di K8s, gunakan 0.0.0.0 (bukan 127.0.0.1)
+      path_prefix:   /loki
+      storage:
+        filesystem:
+          chunks_directory: /loki/chunks
+          rules_directory:  /loki/rules
+      replication_factor: 1
+      ring:
+        kvstore:
+          store: inmemory
+
+    schema_config:
+      configs:
+        - from:         2024-01-01
+          store:        tsdb
+          object_store: filesystem
+          schema:       v13
+          index:
+            prefix: index_
+            period: 24h
+
+    ruler:
+      storage:
+        type: local
+        local:
+          directory: /loki/rules
+      rule_path:        /loki/rules-temp
+      alertmanager_url: http://localhost:9093
+      ring:
+        kvstore:
+          store: inmemory
+      enable_api: true
+
+    limits_config:
+      reject_old_samples:         true
+      reject_old_samples_max_age: 168h
+      allow_structured_metadata:  true
+      volume_enabled:             true
+
+    query_range:
+      results_cache:
+        cache:
+          embedded_cache:
+            enabled:     true
+            max_size_mb: 100
+
+    analytics:
+      reporting_enabled: false

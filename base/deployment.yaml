@@ -1,0 +1,104 @@
+# Deployment for Grafana Loki
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loki
+  namespace: loki
+  labels:
+    app.kubernetes.io/name:      loki
+    app.kubernetes.io/component: log-storage
+    app.kubernetes.io/version:   "3.1.0"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: loki
+  strategy:
+    type: Recreate   # PVC ReadWriteOnce
+  template:
+    metadata:
+      labels:
+        app: loki
+        app.kubernetes.io/name:      loki
+        app.kubernetes.io/component: log-storage
+    spec:
+      serviceAccountName: loki-sa
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: false   # Loki perlu root untuk akses /loki directory (sesuai docker-compose user: root)
+        runAsUser:    0
+        fsGroup:      0
+        seccompProfile:
+          type: RuntimeDefault
+      terminationGracePeriodSeconds: 30
+      imagePullSecrets:
+        - name: harbor-secret
+      containers:
+        - name: loki
+          image: grafana/loki:3.1.0
+          imagePullPolicy: IfNotPresent
+          args:
+            - "-config.file=/etc/loki/local-config.yaml"
+          ports:
+            - name:          http
+              containerPort: 3100
+              protocol:      TCP
+            - name:          grpc
+              containerPort: 9096
+              protocol:      TCP
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem:   false   # Loki butuh write ke /loki
+            capabilities:
+              drop: ["ALL"]
+          startupProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds:       5
+            failureThreshold:    12
+            timeoutSeconds:      3
+          livenessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 0
+            periodSeconds:       30
+            timeoutSeconds:      5
+            failureThreshold:    3
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 0
+            periodSeconds:       10
+            timeoutSeconds:      3
+            failureThreshold:    3
+            successThreshold:    1
+          resources:
+            requests:
+              cpu:    "100m"
+              memory: "256Mi"
+            limits:
+              cpu:    "1000m"
+              memory: "512Mi"
+          volumeMounts:
+            - name:      config
+              mountPath: /etc/loki/local-config.yaml
+              subPath:   loki.yaml
+              readOnly:  true
+            - name:      data
+              mountPath: /loki
+            - name:      tmp
+              mountPath: /tmp
+      volumes:
+        - name: config
+          configMap:
+            name: loki-config
+        - name: data
+          persistentVolumeClaim:
+            claimName: loki-data-pvc
+        - name: tmp
+          emptyDir: {}

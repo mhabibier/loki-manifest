@@ -1,0 +1,11 @@
+# ServiceAccount for Grafana Loki
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: loki-sa
+  namespace: loki
+  labels:
+    app.kubernetes.io/name:      loki
+    app.kubernetes.io/component: serviceaccount
+automountServiceAccountToken: false

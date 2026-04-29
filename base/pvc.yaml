@@ -1,0 +1,18 @@
+# PersistentVolumeClaim for Loki data
+# Setara dengan volume `./data/loki:/loki` di Docker Compose.
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: loki-data-pvc
+  namespace: loki
+  labels:
+    app.kubernetes.io/name:      loki
+    app.kubernetes.io/component: storage
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi   # Log retention 168h (7 hari), sesuaikan dengan volume log
+  # storageClassName: ""

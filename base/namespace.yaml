@@ -1,0 +1,9 @@
+# Namespace for Grafana Loki
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: loki
+  labels:
+    app.kubernetes.io/name:      loki
+    app.kubernetes.io/component: namespace
