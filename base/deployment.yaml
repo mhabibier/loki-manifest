@@ -32,8 +32,6 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       terminationGracePeriodSeconds: 30
-      imagePullSecrets:
-        - name: harbor-secret
       containers:
         - name: loki
           image: grafana/loki:3.1.0
